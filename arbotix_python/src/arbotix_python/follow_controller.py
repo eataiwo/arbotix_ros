@@ -34,7 +34,7 @@ from trajectory_msgs.msg import JointTrajectory
 from diagnostic_msgs.msg import *
 
 from arbotix_python.ax12 import *
-from arbotix_python.controllers import *
+from arbotix_python.controllers import Controller
 
 class FollowController(Controller):
     """ A controller for joint chains, exposing a FollowJointTrajectory action. """
@@ -44,15 +44,15 @@ class FollowController(Controller):
         self.interpolating = 0
 
         # parameters: rates and joints
-        self.rate = rospy.get_param('~controllers/'+name+'/rate',50.0)
+        self.rate = rospy.get_param('~controllers/'+name+'/rate', 50.0)
         self.joints = rospy.get_param('~controllers/'+name+'/joints')
         self.index = rospy.get_param('~controllers/'+name+'/index', len(device.controllers))
         for joint in self.joints:
             self.device.joints[joint].controller = self
 
         # action server
-        name = rospy.get_param('~controllers/'+name+'/action_name','follow_joint_trajectory')
-        self.server = actionlib.SimpleActionServer(name, FollowJointTrajectoryAction, execute_cb=self.actionCb, auto_start=False)
+        name = rospy.get_param('~controllers/'+name+'/action_ns', 'widowx_arm_controller/follow_joint_trajectory')
+        self.server = actionlib.SimpleActionServer('widowx_arm_controller/follow_joint_trajectory', FollowJointTrajectoryAction, execute_cb=self.actionCb, auto_start=False)
 
         # good old trajectory
         rospy.Subscriber(self.name+'/command', JointTrajectory, self.commandCb)
@@ -77,7 +77,7 @@ class FollowController(Controller):
             rospy.logwarn("Extra joints in trajectory")
 
         if not traj.points:
-            msg = "Trajectory empy."
+            msg = "Trajectory empty."
             rospy.logerr(msg)
             self.server.set_aborted(text=msg)
             return
