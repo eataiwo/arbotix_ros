@@ -36,6 +36,7 @@ from diagnostic_msgs.msg import *
 from arbotix_python.ax12 import *
 from arbotix_python.controllers import Controller
 
+
 class FollowController(Controller):
     """ A controller for joint chains, exposing a FollowJointTrajectory action. """
 
@@ -44,21 +45,29 @@ class FollowController(Controller):
         self.interpolating = 0
 
         # parameters: rates and joints
-        self.rate = rospy.get_param('~controllers/'+name+'/rate', 50.0)
-        self.joints = rospy.get_param('~controllers/'+name+'/joints')
-        self.index = rospy.get_param('~controllers/'+name+'/index', len(device.controllers))
+        self.rate = rospy.get_param('~controllers/' + name + '/rate', 200)
+        self.joints = rospy.get_param('~controllers/' + name + '/joints')
+        self.index = rospy.get_param('~controllers/' + name + '/index', len(device.controllers))
         for joint in self.joints:
             self.device.joints[joint].controller = self
 
         # action server
-        name = rospy.get_param('~controllers/'+name+'/action_ns', 'widowx_arm_controller/follow_joint_trajectory')
-        self.server = actionlib.SimpleActionServer('widowx_arm_controller/follow_joint_trajectory', FollowJointTrajectoryAction, execute_cb=self.actionCb, auto_start=False)
+        name_space = rospy.get_param('~controllers/' + name + '/action_ns', 'follow_joint_trajectory')
+        ns = rospy.get_namespace()
+        self.server = actionlib.SimpleActionServer(name+'/follow_joint_trajectory',
+                                                   FollowJointTrajectoryAction, execute_cb=self.actionCb,
+                                                   auto_start=False)
+
+        rospy.loginfo("ROSPARAM: name=" + name)
+        rospy.loginfo("ROSPARAM: ns=" + ns)
+        rospy.loginfo("ROSPARAM: name+ns=" + name + ns)
 
         # good old trajectory
-        rospy.Subscriber(self.name+'/command', JointTrajectory, self.commandCb)
+        rospy.Subscriber(self.name + '/command', JointTrajectory, self.commandCb)
         self.executing = False
 
-        rospy.loginfo("Started FollowController ("+self.name+"). Joints: " + str(self.joints) + " on C" + str(self.index))
+        rospy.loginfo(
+            "Started FollowController (" + self.name + "). Joints: " + str(self.joints) + " on C" + str(self.index))
 
     def startup(self):
         self.server.start()
@@ -90,26 +99,25 @@ class FollowController(Controller):
             self.server.set_aborted(text=msg)
             return
 
-        retval = self.executeTrajectory(traj) # retval: 1: successful, 0: canceled, -1: failed
-        if retval == 1:   
+        retval = self.executeTrajectory(traj)  # retval: 1: successful, 0: canceled, -1: failed
+        if retval == 1:
             self.server.set_succeeded()
             rospy.loginfo(self.name + ": Done.")
         elif retval == 0:
-            self.server.set_preempted(text="Goal canceled.")     
+            self.server.set_preempted(text="Goal canceled.")
             rospy.loginfo(self.name + ": Goal canceled.")
         else:
             self.server.set_aborted(text="Execution failed.")
             rospy.loginfo(self.name + ": Execution failed.")
- 
-    
+
     def commandCb(self, msg):
         # don't execute if executing an action
         if self.server.is_active():
-            rospy.loginfo(self.name+": Received trajectory, but action is active")
+            rospy.loginfo(self.name + ": Received trajectory, but action is active")
             return
         self.executing = True
         self.executeTrajectory(msg)
-        self.executing = False    
+        self.executing = False
 
     def executeTrajectory(self, traj):
         rospy.loginfo("Executing trajectory")
@@ -127,25 +135,25 @@ class FollowController(Controller):
             start = rospy.Time.now()
 
         r = rospy.Rate(self.rate)
-        last = [ self.device.joints[joint].position for joint in self.joints ]
+        last = [self.device.joints[joint].position for joint in self.joints]
         for point in traj.points:
             while rospy.Time.now() + rospy.Duration(0.01) < start:
                 if self.server.is_preempt_requested():
                     return 0
                 rospy.sleep(0.01)
-            desired = [ point.positions[k] for k in indexes ]
+            desired = [point.positions[k] for k in indexes]
             endtime = start + point.time_from_start
             while rospy.Time.now() + rospy.Duration(0.01) < endtime:
                 # check that preempt has not been requested by the client
                 if self.server.is_preempt_requested():
                     return 0
 
-                err = [ (d-c) for d,c in zip(desired,last) ]
-                velocity = [ abs(x / (self.rate * (endtime - rospy.Time.now()).to_sec())) for x in err ]
+                err = [(d - c) for d, c in zip(desired, last)]
+                velocity = [abs(x / (self.rate * (endtime - rospy.Time.now()).to_sec())) for x in err]
                 rospy.logdebug(err)
                 for i in range(len(self.joints)):
                     if err[i] > 0.001 or err[i] < -0.001:
-                        cmd = err[i] 
+                        cmd = err[i]
                         top = velocity[i]
                         if cmd > top:
                             cmd = top
@@ -173,4 +181,3 @@ class FollowController(Controller):
         else:
             msg.values.append(KeyValue("State", "Not Active"))
         return msg
-

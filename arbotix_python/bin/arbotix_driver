@@ -62,7 +62,7 @@ class ArbotixROS(ArbotiX):
         baud = int(rospy.get_param("~baud", "115200"))
         timeout = float(rospy.get_param("~timeout", "0.1"))
 
-        self.rate = rospy.get_param("~rate", 100.0)
+        self.rate = rospy.get_param("~rate", 200)
         self.fake = rospy.get_param("~sim", False)
 
         self.use_sync_read = rospy.get_param("~sync_read", True)  # use sync read?
@@ -201,5 +201,8 @@ class ArbotixROS(ArbotiX):
 
 
 if __name__ == "__main__":
+    rospy.get_param("~port", "/dev/ttyUSB0")
+    rospy.get_param("~port", "/dev/ttyUSB0")
+
     rospy.init_node('arbotix')
     a = ArbotixROS()

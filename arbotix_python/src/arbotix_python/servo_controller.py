@@ -55,9 +55,9 @@ class DynamixelServo(Joint):
         self.rad_per_tick = radians(self.range)/self.ticks
 
         # TODO: load these from URDF
-        self.max_angle = radians(rospy.get_param(n+"max_angle",self.range/2.0))
-        self.min_angle = radians(rospy.get_param(n+"min_angle",-self.range/2.0))
-        self.max_speed = radians(rospy.get_param(n+"max_speed",684.0)) 
+        self.max_angle = radians(rospy.get_param(n+"max_angle", self.range/2.0))
+        self.min_angle = radians(rospy.get_param(n+"min_angle", self.range/2.0))
+        self.max_speed = radians(rospy.get_param(n+"max_speed", 684.0))
                                                 # max speed = 114 rpm - 684 deg/s
         self.invert = rospy.get_param(n+"invert",False)
         self.readable = rospy.get_param(n+"readable",True)
